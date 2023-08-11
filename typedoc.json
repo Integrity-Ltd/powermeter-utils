@@ -1,0 +1,8 @@
+{
+    "$schema": "https://typedoc.org/schema.json",
+    "entryPoints": ["src/utils/DBUtils.ts","src/utils/LogUtils.ts","src/utils/types.d.ts"],
+    "out": "doc",
+    "plugin": ["@zamiell/typedoc-plugin-not-exported"],
+    "excludeInternal": false,
+    "entryPointStrategy": "expand"
+}
