@@ -252,7 +252,7 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
                     roundedPrevMonth = dayjs.unix(prevElement[element.channel].recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
                     roundedMonth = dayjs.unix(element.recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
                     diffMonths = roundedMonth.diff(roundedPrevMonth, "months", true);
-                    isMonthlyEnabled = diffMonths >= 0.9;
+                    isMonthlyEnabled = diffMonths >= 0.9; //DaylightSavingTime
                 } else {
                     isMonthlyEnabled = false;
                 }
