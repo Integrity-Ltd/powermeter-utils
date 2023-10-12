@@ -202,10 +202,10 @@ export async function getMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayj
  * @param measurements array of measurements
  * @param timeZone time zone of measurements
  * @param details hourly|daily|monthly details 
- * @param addFirst add the first record of measured value to result (process is aggregation)
+ * @param isAggregation add the first record of measured value to result (process is aggregation)
  * @returns the detailed measurements
  */
-export function getDetails(measurements: Measurement[], timeZone: string, details: string, addFirst: boolean) {
+export function getDetails(measurements: Measurement[], timeZone: string, details: string, isAggregation: boolean) {
     let result: RecElement[] = [];
     let prevElement: RecElement[] = [];
     let lastElement: RecElement[] = [];
@@ -234,7 +234,7 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
 
             prevRecTime = element.recorded_time;
 
-            if (addFirst) {
+            if (isAggregation) {
                 result.push({ ...prevElement[element.channel] });
             }
         } else {
