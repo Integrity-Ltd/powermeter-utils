@@ -209,70 +209,39 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
     let result: RecElement[] = [];
     let prevElement: RecElement[] = [];
     let lastElement: RecElement[] = [];
+
     const isHourlyEnabled = details == 'hourly';
     const isDaily = details == 'daily';
     const isMonthly = details == 'monthly';
+
     let isAddableEntry = false;
+
     const localTimeZone = dayjs.tz.guess();
     //dayjs.tz.setDefault(timeZone);
-    let roundedPrevDay: Dayjs | null = null;
-    let roundedDay: Dayjs | null = null;
-    let roundedPrevMonth: Dayjs | null = null;
-    let roundedMonth: Dayjs | null = null;
-    let diffMonths: number = 0;
-    let diffDays: number = 0;
+
     let isDailyEnabled: boolean = false;
     let isMonthlyEnabled: boolean = false;
+
     let prevRecTime: number = 0;
+
     measurements.forEach((element: Measurement, idx: number) => {
         if (prevElement[element.channel] == undefined) {
-            prevElement[element.channel] = {
-                recorded_time: element.recorded_time,
-                measured_value: element.measured_value,
-                channel: element.channel, diff: 0,
-            };
-
+            initPrevElement(element, prevElement);
             prevRecTime = element.recorded_time;
-
             if (isAggregation) {
                 result.push({ ...prevElement[element.channel] });
             }
         } else {
-            const changedTime = prevRecTime !== element.recorded_time;
-            if (changedTime) {
-                if (isDaily) {
-                    roundedPrevDay = dayjs.unix(prevElement[element.channel].recorded_time).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
-                    roundedDay = dayjs.unix(element.recorded_time).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
-                    diffDays = roundedDay.diff(roundedPrevDay, "days");
-                    isDailyEnabled = diffDays >= 1;
-                } else {
-                    isDailyEnabled = false;
-                }
-                if (isMonthly) {
-                    roundedPrevMonth = dayjs.unix(prevElement[element.channel].recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
-                    roundedMonth = dayjs.unix(element.recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
-                    diffMonths = roundedMonth.diff(roundedPrevMonth, "months", true);
-                    isMonthlyEnabled = diffMonths >= 0.9; //DaylightSavingTime
-                } else {
-                    isMonthlyEnabled = false;
-                }
+            const isChangedTime = prevRecTime !== element.recorded_time;
+            if (isChangedTime) {
+                isDailyEnabled = isDaily && checkDaylyEnabled(element, prevElement);
+                isMonthlyEnabled = isMonthly && checkMonthlyEnabled(element, prevElement);
             }
             //fileLog("measurements.log", `${dayjs.unix(element.recorded_time).tz().format("YYYY-MM-DD HH:mm:ss")} | diff: ${diffMonths}\n`);
             isAddableEntry = isHourlyEnabled || isDailyEnabled || isMonthlyEnabled;
 
             if (isAddableEntry) {
-                prevElement[element.channel] = {
-                    recorded_time: element.recorded_time,
-                    from_utc_time: dayjs.unix(prevElement[element.channel].recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
-                    to_utc_time: dayjs.unix(element.recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
-                    from_server_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    to_server_time: dayjs.unix(element.recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    from_local_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    to_local_time: dayjs.unix(element.recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    measured_value: element.measured_value,
-                    channel: element.channel,
-                    diff: element.measured_value - prevElement[element.channel].measured_value
-                };
+                calcDiff(element, prevElement, timeZone, localTimeZone);
                 result.push({ ...prevElement[element.channel] });
             }
             prevRecTime = element.recorded_time;
@@ -280,30 +249,69 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
         }
     });
     if (!isAddableEntry && lastElement.length > 0) {
-        lastElement.forEach((element: RecElement, idx: number) => {
-            try {
-                const diff = element.measured_value - prevElement[element.channel].measured_value;
-                prevElement[element.channel] = {
-                    recorded_time: element.recorded_time,
-                    from_utc_time: dayjs.unix(prevElement[element.channel].recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
-                    to_utc_time: dayjs.unix(element.recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
-                    from_server_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    to_server_time: dayjs.unix(element.recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    from_local_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    to_local_time: dayjs.unix(element.recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
-                    measured_value: element.measured_value,
-                    channel: element.channel,
-                    diff: diff
-                };
-
-                result.push({ ...prevElement[element.channel] });
-
-            } catch (err) {
-                console.error(dayjs().format(), err);
-            }
-        });
+        appendLastElement(result, prevElement, lastElement, timeZone, localTimeZone);
     }
     return result;
+}
+
+/**
+ * Get monthly measurements from previous year
+ * 
+ * @param fromDate from date
+ * @param toDate to date
+ * @param ip IP address of powermeter
+ * @param channel channel of powermeter (use -1 for all)
+ * @returns the array of measurements
+ */
+export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel: number): Promise<any[]> {
+    let result: any[] = [];
+    const filePath = (process.env.WORKDIR as string);
+    const dbFile = path.join(filePath, ip, fromDate.format("YYYY") + "-yearly.sqlite");
+    if (fs.existsSync(dbFile)) {
+        const db = new Database(dbFile);
+        try {
+            const fromSec = fromDate.unix();
+            const toSec = toDate.unix();
+            let filters = [fromSec, toSec];
+            if (channel) {
+                filters.push(channel);
+            }
+            let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? "and channel=?" : "") + " order by recorded_time, channel", filters);
+            measurements.forEach((element: any) => {
+                result.push(element);
+            })
+        } catch (err) {
+            console.error(dayjs().format(), err);
+        } finally {
+            db.close();
+        }
+    }
+
+    return result;
+}
+
+
+function calcDiff(element: RecElement, prevElement: RecElement[], timeZone: string, localTimeZone: string) {
+    const diff = element.measured_value - prevElement[element.channel].measured_value;
+    prevElement[element.channel] = {
+        recorded_time: element.recorded_time,
+
+        from_utc_time: dayjs.unix(prevElement[element.channel].recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
+        to_utc_time: dayjs.unix(element.recorded_time).utc().format("YYYY-MM-DD HH:mm:ss"),
+
+        from_unix_time: dayjs.unix(prevElement[element.channel].recorded_time).format("YYYY-MM-DD HH:mm:ss"),
+        to_unix_time: dayjs.unix(element.recorded_time).format("YYYY-MM-DD HH:mm:ss"),
+
+        from_server_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
+        to_server_time: dayjs.unix(element.recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
+
+        from_local_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
+        to_local_time: dayjs.unix(element.recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
+
+        measured_value: element.measured_value,
+        channel: element.channel,
+        diff: diff
+    };
 }
 
 /**
@@ -315,4 +323,40 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
 export function getDBFilePath(IPAddress: string): string {
     const dbFilePath = path.join(process.env.WORKDIR as string, IPAddress);
     return dbFilePath;
+}
+
+function checkDaylyEnabled(element: Measurement, prevElement: RecElement[]): boolean {
+    let roundedPrevDay = dayjs.unix(prevElement[element.channel].recorded_time).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
+    let roundedDay = dayjs.unix(element.recorded_time).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
+    let diffDays = roundedDay.diff(roundedPrevDay, "days");
+    return diffDays >= 1;
+
+}
+
+function checkMonthlyEnabled(element: Measurement, prevElement: RecElement[]): boolean {
+    let roundedPrevMonth = dayjs.unix(prevElement[element.channel].recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
+    let roundedMonth = dayjs.unix(element.recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
+    let diffMonths = roundedMonth.diff(roundedPrevMonth, "months", true);
+    return diffMonths >= 0.9; //DaylightSavingTime;
+}
+
+function initPrevElement(element: Measurement, prevElement: RecElement[]) {
+    prevElement[element.channel] = {
+        recorded_time: element.recorded_time,
+        measured_value: element.measured_value,
+        channel: element.channel,
+        diff: 0,
+    };
+}
+
+function appendLastElement(result: RecElement[], prevElement: RecElement[], lastElement: RecElement[], timeZone: string, localTimeZone: string) {
+    lastElement.forEach((element: RecElement, idx: number) => {
+        try {
+            calcDiff(element, prevElement, timeZone, localTimeZone);
+            result.push({ ...prevElement[element.channel] });
+
+        } catch (err) {
+            console.error(dayjs().format(), err);
+        }
+    });
 }

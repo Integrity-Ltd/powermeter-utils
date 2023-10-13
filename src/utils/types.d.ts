@@ -46,6 +46,8 @@ export interface RecElement {
     diff?: number,
     from_utc_time?: string,
     to_utc_time?: string,
+    from_unix_time?: string,
+    to_unix_time?: string,
     from_server_time?: string,
     to_server_time?: string,
     from_local_time?: string,
