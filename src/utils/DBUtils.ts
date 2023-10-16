@@ -19,7 +19,7 @@ dayjs.extend(timezone)
  * @param params params of SQL command
  * @returns Promis for result
  */
-export function runQuery(dbase: Database, sql: string, params: Array<number | string | boolean>) {
+export function runQuery(dbase: Database, sql: string, params: Array<number | string | boolean | number[]>) {
     return new Promise<any>((resolve, reject) => {
         return dbase.all(sql, params, (err: any, res: any) => {
             if (err) {
@@ -167,7 +167,7 @@ export function processMeasurements(db: Database, currentTime: dayjs.Dayjs, ip_a
  * @param channel filtered channel number
  * @returns promis for array of measurements
  */
-export async function getMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel?: number): Promise<Measurement[]> {
+export async function getMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel?: number | number[]): Promise<Measurement[]> {
     let monthlyIterator = dayjs(fromDate).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0).set("millisecond", 0);
     let result: Measurement[] = [];
     while (monthlyIterator.isBefore(toDate) || monthlyIterator.isSame(toDate)) {
@@ -178,11 +178,20 @@ export async function getMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayj
             try {
                 const fromSec = fromDate.unix();
                 const toSec = toDate.unix();
-                let filters = [fromSec, toSec];
+                let filters: (string | number | number[])[] = [fromSec, toSec];
+                let placeholders = "";
                 if (channel) {
-                    filters.push(channel);
+                    if (Array.isArray(channel)) {
+                        placeholders = channel.join(",");
+                    } else {
+                        filters.push(channel);
+                    }
                 }
-                let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? "and channel=?" : "") + " order by recorded_time, channel", filters);
+                console.log(dayjs().format(), "filters:", filters);
+                const sql = "select * from measurements where recorded_time between ? and ? "
+                    + (channel ? (Array.isArray(channel) ? `and channel in (${placeholders})` : "and channel=?") : "") + " order by recorded_time, channel";
+                console.log(dayjs().format(), "sql:", sql);
+                let measurements = await runQuery(db, sql, filters);
                 result.push(...measurements);
             } catch (err) {
                 console.error(dayjs().format(), err);
@@ -263,7 +272,7 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
  * @param channel channel of powermeter (use -1 for all)
  * @returns the array of measurements
  */
-export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel: number): Promise<any[]> {
+export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel?: number | number[]): Promise<any[]> {
     let result: any[] = [];
     const filePath = (process.env.WORKDIR as string);
     const dbFile = path.join(filePath, ip, fromDate.format("YYYY") + "-yearly.sqlite");
@@ -273,10 +282,15 @@ export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate
             const fromSec = fromDate.unix();
             const toSec = toDate.unix();
             let filters = [fromSec, toSec];
+            let placeholders = "";
             if (channel) {
-                filters.push(channel);
+                if (Array.isArray(channel)) {
+                    placeholders = channel.join(",");
+                } else {
+                    filters.push(channel);
+                }
             }
-            let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? "and channel=?" : "") + " order by recorded_time, channel", filters);
+            let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? (Array.isArray(channel) ? `and channel in (${placeholders})` : "and channel=?") : "") + " order by recorded_time, channel", filters);
             measurements.forEach((element: any) => {
                 result.push(element);
             })
