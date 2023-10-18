@@ -264,6 +264,45 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
 }
 
 /**
+ * 
+ * @param measurements array of measurements
+ * @returns array of average values
+ */
+export function getAverage(measurements: Measurement[]) {
+    const details = getDetails(measurements, "", "hourly", false);
+    const result: number[] = [];
+    const count: number[] = [];
+    details.forEach((element: RecElement, idx: number) => {
+        if (result[element.channel] == undefined) {
+            result[element.channel] = 0;
+            count[element.channel] = 0;
+        }
+        if (element.diff) {
+            result[element.channel] += element.diff;
+            count[element.channel] += 1;
+        }
+    });
+    result.forEach((element: number, idx: number) => {
+        result[idx] = element / count[idx];
+    });
+    return result;
+}
+
+export function getSumm(measurements: Measurement[]) {
+    const details = getDetails(measurements, "", "hourly", false);
+    const result: number[] = [];
+    details.forEach((element: RecElement, idx: number) => {
+        if (result[element.channel] == undefined) {
+            result[element.channel] = 0;
+        }
+        if (element.diff) {
+            result[element.channel] += element.diff;
+        }
+    });
+    return result;
+}
+
+/**
  * Get monthly measurements from previous year
  * 
  * @param fromDate from date
@@ -373,4 +412,15 @@ function appendLastElement(result: RecElement[], prevElement: RecElement[], last
             console.error(dayjs().format(), err);
         }
     });
+}
+
+export async function getPowerMeterTimeZone(ip: string) {
+    const configDB = new Database(process.env.CONFIG_DB_FILE as string);
+
+    let timeZone = dayjs.tz.guess();
+    const tzone = await runQuery(configDB, "select time_zone from power_meter where ip_address=?", [ip]);
+    if (tzone.length > 0) {
+        timeZone = tzone[0].time_zone;
+    }
+    return timeZone;
 }
