@@ -264,60 +264,32 @@ export function getDetails(measurements: Measurement[], powermeterTimeZone: stri
 }
 
 /**
- * Get the average of measurements
- * 
- * @param measurements array of measurements
- * @param powermeterTimeZone time zone of powermeter
- * @returns array of average values
- */
-export function getAverage(measurements: Measurement[], powermeterTimeZone: string) {
-    const details = getDetails(measurements, powermeterTimeZone, "hourly", false);
-    const result: { channel: number, avg: number, count: number }[] = [];
-    details.forEach((element: RecElement, idx: number) => {
-        const item = result.find(value => value.channel === element.channel);
-        if (!item) {
-            if (element.diff) {
-                const value = { channel: element.channel, avg: element.diff, count: 1 };
-                result.push(value);
-            }
-        } else {
-            if (element.diff) {
-                if (item) {
-                    item.avg += element.diff;
-                    item.count += 1;
-                }
-            }
-        }
-    });
-    result.forEach((element: { channel: number, avg: number, count: number }, idx: number) => {
-        element.avg = element.avg / element.count;
-    });
-    return result;
-}
-
-/**
  * Get the summ of measurements
  * @param measurements array of measurements
  * @param powermeterTimeZone time zone of powermeter
  * @returns the array of summ values
  */
-export function getSumm(measurements: Measurement[], powermeterTimeZone: string) {
+export function getAvgSumm(measurements: Measurement[], powermeterTimeZone: string) {
     const details = getDetails(measurements, powermeterTimeZone, "hourly", false);
-    const result: { channel: number, summ: number }[] = [];
+    const result: { channel: number, summ: number, count: number, avg: number }[] = [];
     details.forEach((element: RecElement, idx: number) => {
         const item = result.find(value => value.channel === element.channel);
         if (!item) {
             if (element.diff) {
-                const value = { channel: element.channel, summ: element.diff };
+                const value = { channel: element.channel, summ: element.diff, avg: 0, count: 1 };
                 result.push(value);
             }
         } else {
             if (element.diff) {
                 if (item) {
                     item.summ += element.diff
+                    item.count += 1;
                 }
             }
         }
+    });
+    result.forEach((element: { channel: number, avg: number, summ: number, count: number }, idx: number) => {
+        element.avg = element.summ / element.count;
     });
     return result;
 }
