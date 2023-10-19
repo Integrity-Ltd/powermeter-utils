@@ -272,20 +272,25 @@ export function getDetails(measurements: Measurement[], powermeterTimeZone: stri
  */
 export function getAverage(measurements: Measurement[], powermeterTimeZone: string) {
     const details = getDetails(measurements, powermeterTimeZone, "hourly", false);
-    const result: number[] = [];
-    const count: number[] = [];
+    const result: { channel: number, avg: number, count: number }[] = [];
     details.forEach((element: RecElement, idx: number) => {
-        if (result[element.channel] == undefined) {
-            result[element.channel] = 0;
-            count[element.channel] = 0;
-        }
-        if (element.diff) {
-            result[element.channel] += element.diff;
-            count[element.channel] += 1;
+        const item = result.find(value => value.channel === element.channel);
+        if (!item) {
+            if (element.diff) {
+                const value = { channel: element.channel, avg: element.diff, count: 1 };
+                result.push(value);
+            }
+        } else {
+            if (element.diff) {
+                if (item) {
+                    item.avg += element.diff;
+                    item.count += 1;
+                }
+            }
         }
     });
-    result.forEach((element: number, idx: number) => {
-        result[idx] = element / count[idx];
+    result.forEach((element: { channel: number, avg: number, count: number }, idx: number) => {
+        element.avg = element.avg / element.count;
     });
     return result;
 }
@@ -298,13 +303,20 @@ export function getAverage(measurements: Measurement[], powermeterTimeZone: stri
  */
 export function getSumm(measurements: Measurement[], powermeterTimeZone: string) {
     const details = getDetails(measurements, powermeterTimeZone, "hourly", false);
-    const result: number[] = [];
+    const result: { channel: number, summ: number }[] = [];
     details.forEach((element: RecElement, idx: number) => {
-        if (result[element.channel] == undefined) {
-            result[element.channel] = 0;
-        }
-        if (element.diff) {
-            result[element.channel] += element.diff;
+        const item = result.find(value => value.channel === element.channel);
+        if (!item) {
+            if (element.diff) {
+                const value = { channel: element.channel, summ: element.diff };
+                result.push(value);
+            }
+        } else {
+            if (element.diff) {
+                if (item) {
+                    item.summ += element.diff
+                }
+            }
         }
     });
     return result;
