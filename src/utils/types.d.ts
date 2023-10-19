@@ -48,8 +48,8 @@ export interface RecElement {
     to_utc_time?: string,
     from_unix_time?: string,
     to_unix_time?: string,
-    from_server_time?: string,
-    to_server_time?: string,
+    from_powermeter_time?: string,
+    to_powermeter_time?: string,
     from_local_time?: string,
     to_local_time?: string,
 }

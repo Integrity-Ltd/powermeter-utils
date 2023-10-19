@@ -209,12 +209,12 @@ export async function getMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayj
  * Get filtered array of measurements
  * 
  * @param measurements array of measurements
- * @param timeZone time zone of measurements
+ * @param powermeterTimeZone time zone of server
  * @param details hourly|daily|monthly details 
  * @param isAggregation add the first record of measured value to result (process is aggregation)
  * @returns the detailed measurements
  */
-export function getDetails(measurements: Measurement[], timeZone: string, details: string, isAggregation: boolean) {
+export function getDetails(measurements: Measurement[], powermeterTimeZone: string, details: string, isAggregation: boolean) {
     let result: RecElement[] = [];
     let prevElement: RecElement[] = [];
     let lastElement: RecElement[] = [];
@@ -250,7 +250,7 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
             isAddableEntry = isHourlyEnabled || isDailyEnabled || isMonthlyEnabled;
 
             if (isAddableEntry) {
-                calcDiff(element, prevElement, timeZone, localTimeZone);
+                calcDiff(element, prevElement, powermeterTimeZone, localTimeZone);
                 result.push({ ...prevElement[element.channel] });
             }
             prevRecTime = element.recorded_time;
@@ -258,18 +258,20 @@ export function getDetails(measurements: Measurement[], timeZone: string, detail
         }
     });
     if (!isAddableEntry && lastElement.length > 0) {
-        appendLastElement(result, prevElement, lastElement, timeZone, localTimeZone);
+        appendLastElement(result, prevElement, lastElement, powermeterTimeZone, localTimeZone);
     }
     return result;
 }
 
 /**
+ * Get the average of measurements
  * 
  * @param measurements array of measurements
+ * @param powermeterTimeZone time zone of powermeter
  * @returns array of average values
  */
-export function getAverage(measurements: Measurement[]) {
-    const details = getDetails(measurements, "", "hourly", false);
+export function getAverage(measurements: Measurement[], powermeterTimeZone: string) {
+    const details = getDetails(measurements, powermeterTimeZone, "hourly", false);
     const result: number[] = [];
     const count: number[] = [];
     details.forEach((element: RecElement, idx: number) => {
@@ -288,8 +290,14 @@ export function getAverage(measurements: Measurement[]) {
     return result;
 }
 
-export function getSumm(measurements: Measurement[]) {
-    const details = getDetails(measurements, "", "hourly", false);
+/**
+ * Get the summ of measurements
+ * @param measurements array of measurements
+ * @param powermeterTimeZone time zone of powermeter
+ * @returns the array of summ values
+ */
+export function getSumm(measurements: Measurement[], powermeterTimeZone: string) {
+    const details = getDetails(measurements, powermeterTimeZone, "hourly", false);
     const result: number[] = [];
     details.forEach((element: RecElement, idx: number) => {
         if (result[element.channel] == undefined) {
@@ -343,8 +351,15 @@ export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate
     return result;
 }
 
-
-function calcDiff(element: RecElement, prevElement: RecElement[], timeZone: string, localTimeZone: string) {
+/**
+ * Calculate the difference between two measurements
+ * 
+ * @param element measurement element
+ * @param prevElement previous measurement elements
+ * @param powermeterTimeZone server time zone
+ * @param localTimeZone local time zone
+ */
+function calcDiff(element: RecElement, prevElement: RecElement[], powermeterTimeZone: string, localTimeZone: string) {
     const diff = element.measured_value - prevElement[element.channel].measured_value;
     prevElement[element.channel] = {
         recorded_time: element.recorded_time,
@@ -355,8 +370,8 @@ function calcDiff(element: RecElement, prevElement: RecElement[], timeZone: stri
         from_unix_time: dayjs.unix(prevElement[element.channel].recorded_time).format("YYYY-MM-DD HH:mm:ss"),
         to_unix_time: dayjs.unix(element.recorded_time).format("YYYY-MM-DD HH:mm:ss"),
 
-        from_server_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
-        to_server_time: dayjs.unix(element.recorded_time).tz(timeZone).format("YYYY-MM-DD HH:mm:ss"),
+        from_powermeter_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(powermeterTimeZone).format("YYYY-MM-DD HH:mm:ss"),
+        to_powermeter_time: dayjs.unix(element.recorded_time).tz(powermeterTimeZone).format("YYYY-MM-DD HH:mm:ss"),
 
         from_local_time: dayjs.unix(prevElement[element.channel].recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
         to_local_time: dayjs.unix(element.recorded_time).tz(localTimeZone).format("YYYY-MM-DD HH:mm:ss"),
@@ -378,6 +393,13 @@ export function getDBFilePath(IPAddress: string): string {
     return dbFilePath;
 }
 
+/**
+ * Check if dayly details is enabled
+ * 
+ * @param element Measurement element
+ * @param prevElement Previous measurement elements
+ * @returns true if the difference between the two measurement is greater than or equale to 1 day
+ */
 function checkDaylyEnabled(element: Measurement, prevElement: RecElement[]): boolean {
     let roundedPrevDay = dayjs.unix(prevElement[element.channel].recorded_time).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
     let roundedDay = dayjs.unix(element.recorded_time).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
@@ -386,6 +408,13 @@ function checkDaylyEnabled(element: Measurement, prevElement: RecElement[]): boo
 
 }
 
+/**
+ * Check if monthly details is enabled
+ * 
+ * @param element Measurement element
+ * @param prevElement Previous measurement elements
+ * @returns true if the difference between the two measurement is greater than or equale to 1 month
+ */
 function checkMonthlyEnabled(element: Measurement, prevElement: RecElement[]): boolean {
     let roundedPrevMonth = dayjs.unix(prevElement[element.channel].recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
     let roundedMonth = dayjs.unix(element.recorded_time).set("date", 1).set("hour", 0).set("minute", 0).set("second", 0); //.tz()
@@ -393,6 +422,12 @@ function checkMonthlyEnabled(element: Measurement, prevElement: RecElement[]): b
     return diffMonths >= 0.9; //DaylightSavingTime;
 }
 
+/**
+ * Init previous measurement element
+ * 
+ * @param element Measurement element
+ * @param prevElement Previous measurement elements
+ */
 function initPrevElement(element: Measurement, prevElement: RecElement[]) {
     prevElement[element.channel] = {
         recorded_time: element.recorded_time,
@@ -402,10 +437,19 @@ function initPrevElement(element: Measurement, prevElement: RecElement[]) {
     };
 }
 
-function appendLastElement(result: RecElement[], prevElement: RecElement[], lastElement: RecElement[], timeZone: string, localTimeZone: string) {
+/**
+ * Append last measurement element to result
+ * 
+ * @param result the array of measurements
+ * @param prevElement previous measurement elements
+ * @param lastElement last measurement elements
+ * @param serverTimeZone server time zone
+ * @param localTimeZone local time zone
+ */
+function appendLastElement(result: RecElement[], prevElement: RecElement[], lastElement: RecElement[], serverTimeZone: string, localTimeZone: string) {
     lastElement.forEach((element: RecElement, idx: number) => {
         try {
-            calcDiff(element, prevElement, timeZone, localTimeZone);
+            calcDiff(element, prevElement, serverTimeZone, localTimeZone);
             result.push({ ...prevElement[element.channel] });
 
         } catch (err) {
@@ -414,6 +458,12 @@ function appendLastElement(result: RecElement[], prevElement: RecElement[], last
     });
 }
 
+/**
+ * Get timezone of powermeter
+ * 
+ * @param ip IP address of powermeter
+ * @returns the timezone of powermeter
+ */
 export async function getPowerMeterTimeZone(ip: string) {
     const configDB = new Database(process.env.CONFIG_DB_FILE as string);
 
