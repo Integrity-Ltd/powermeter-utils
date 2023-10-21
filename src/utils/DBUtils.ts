@@ -187,10 +187,10 @@ export async function getMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayj
                         filters.push(channel);
                     }
                 }
-                console.log(dayjs().format(), "filters:", filters);
+                //console.log(dayjs().format(), "filters:", filters);
                 const sql = "select * from measurements where recorded_time between ? and ? "
                     + (channel ? (Array.isArray(channel) ? `and channel in (${placeholders})` : "and channel=?") : "") + " order by recorded_time, channel";
-                console.log(dayjs().format(), "sql:", sql);
+                //console.log(dayjs().format(), "sql:", sql);
                 let measurements = await runQuery(db, sql, filters);
                 result.push(...measurements);
             } catch (err) {
