@@ -7,6 +7,7 @@ import sqlite3 from 'sqlite3';
 import fs from "fs";
 import path from "path";
 import { Measurement, PowerMeter, RecElement } from "./types";
+import * as mathjs from 'mathjs';
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -344,7 +345,7 @@ export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate
  * @param localTimeZone local time zone
  */
 function calcDiff(element: RecElement, prevElement: RecElement[], powermeterTimeZone: string, localTimeZone: string) {
-    const diff = element.measured_value - prevElement[element.channel].measured_value;
+    const diff = new Number(mathjs.subtract(mathjs.bignumber(element.measured_value), mathjs.bignumber(prevElement[element.channel].measured_value)));
     prevElement[element.channel] = {
         recorded_time: element.recorded_time,
 
