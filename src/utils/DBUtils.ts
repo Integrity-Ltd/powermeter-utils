@@ -7,7 +7,6 @@ import sqlite3 from 'sqlite3';
 import fs from "fs";
 import path from "path";
 import { Measurement, PowerMeter, RecElement } from "./types";
-import * as mathjs from 'mathjs';
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -266,9 +265,13 @@ export function getDetails(measurements: Measurement[], powermeterTimeZone: stri
 
 interface ResultAVG {
     channel: number,
-    sum: mathjs.BigNumber,
-    avg: mathjs.BigNumber,
+    sum: number,
+    avg: number,
     count: number
+}
+
+export function roundToFourDecimals(value: number) {
+    return Math.round(value * 10000) / 10000;
 }
 
 /**
@@ -284,20 +287,21 @@ export function getAvgSum(measurements: Measurement[], powermeterTimeZone: strin
         const item = result.find(value => value.channel === element.channel);
         if (!item) {
             if (element.diff) {
-                let value: ResultAVG = { channel: element.channel, sum: mathjs.bignumber(Number(element.diff)), avg: mathjs.bignumber(0), count: 1 };
+                let value: ResultAVG = { channel: element.channel, sum: element.diff, avg: 0, count: 1 };
                 result.push(value);
             }
         } else {
             if (element.diff) {
                 if (item) {
-                    item.sum = mathjs.bignumber(mathjs.add(item.sum, mathjs.bignumber(Number(element.diff))));
+                    item.sum += element.diff;
                     item.count += 1;
                 }
             }
         }
     });
     result.forEach((element: ResultAVG, idx: number) => {
-        element.avg = mathjs.bignumber(mathjs.divide(Number(element.sum), Number(element.count)));
+        element.sum = roundToFourDecimals(element.sum);
+        element.avg = roundToFourDecimals(element.sum / element.count);
     });
     return result;
 }
@@ -352,7 +356,7 @@ export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate
  * @param localTimeZone local time zone
  */
 function calcDiff(element: RecElement, prevElement: RecElement[], powermeterTimeZone: string, localTimeZone: string) {
-    const diff = new Number(mathjs.subtract(mathjs.bignumber(element.measured_value), mathjs.bignumber(prevElement[element.channel].measured_value)));
+    const diff = roundToFourDecimals(element.measured_value - prevElement[element.channel].measured_value);
     prevElement[element.channel] = {
         recorded_time: element.recorded_time,
 
