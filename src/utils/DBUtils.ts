@@ -272,25 +272,25 @@ export function getDetails(measurements: Measurement[], powermeterTimeZone: stri
  */
 export function getAvgSum(measurements: Measurement[], powermeterTimeZone: string) {
     const details = getDetails(measurements, powermeterTimeZone, "hourly", false);
-    const result: { channel: number, sum: number, count: number, avg: number }[] = [];
+    const result: { channel: number, sum: mathjs.BigNumber, avg: mathjs.BigNumber, count: number }[] = [];
     details.forEach((element: RecElement, idx: number) => {
         const item = result.find(value => value.channel === element.channel);
         if (!item) {
             if (element.diff) {
-                const value = { channel: element.channel, sum: element.diff, avg: 0, count: 1 };
+                const value = { channel: element.channel, sum: element.diff, avg: mathjs.bignumber(0), count: 1 };
                 result.push(value);
             }
         } else {
             if (element.diff) {
                 if (item) {
-                    item.sum += element.diff
+                    item.sum = mathjs.add(item.sum, element.diff);
                     item.count += 1;
                 }
             }
         }
     });
-    result.forEach((element: { channel: number, avg: number, sum: number, count: number }, idx: number) => {
-        element.avg = element.sum / element.count;
+    result.forEach((element: { channel: number, avg: mathjs.BigNumber, sum: mathjs.BigNumber, count: number }, idx: number) => {
+        element.avg = mathjs.bignumber(mathjs.divide(Number(element.sum), Number(mathjs.bignumber(element.count))));
     });
     return result;
 }
