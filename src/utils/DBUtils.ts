@@ -283,7 +283,7 @@ export function getAvgSum(measurements: Measurement[], powermeterTimeZone: strin
         } else {
             if (element.diff) {
                 if (item) {
-                    item.sum = mathjs.add(item.sum, element.diff);
+                    item.sum = mathjs.bignumber(mathjs.add(Number(item.sum), Number(element.diff)));
                     item.count += 1;
                 }
             }
