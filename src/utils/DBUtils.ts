@@ -264,6 +264,13 @@ export function getDetails(measurements: Measurement[], powermeterTimeZone: stri
     return result;
 }
 
+interface ResultAVG {
+    channel: number,
+    sum: mathjs.BigNumber,
+    avg: mathjs.BigNumber,
+    count: number
+}
+
 /**
  * Get the summ of measurements
  * @param measurements array of measurements
@@ -272,25 +279,25 @@ export function getDetails(measurements: Measurement[], powermeterTimeZone: stri
  */
 export function getAvgSum(measurements: Measurement[], powermeterTimeZone: string) {
     const details = getDetails(measurements, powermeterTimeZone, "hourly", false);
-    const result: { channel: number, sum: mathjs.BigNumber, avg: mathjs.BigNumber, count: number }[] = [];
+    const result: ResultAVG[] = [];
     details.forEach((element: RecElement, idx: number) => {
         const item = result.find(value => value.channel === element.channel);
         if (!item) {
             if (element.diff) {
-                const value = { channel: element.channel, sum: element.diff, avg: mathjs.bignumber(0), count: 1 };
+                let value: ResultAVG = { channel: element.channel, sum: mathjs.bignumber(Number(element.diff)), avg: mathjs.bignumber(0), count: 1 };
                 result.push(value);
             }
         } else {
             if (element.diff) {
                 if (item) {
-                    item.sum = mathjs.bignumber(mathjs.add(Number(item.sum), Number(element.diff)));
+                    item.sum = mathjs.bignumber(mathjs.add(item.sum, mathjs.bignumber(Number(element.diff))));
                     item.count += 1;
                 }
             }
         }
     });
-    result.forEach((element: { channel: number, avg: mathjs.BigNumber, sum: mathjs.BigNumber, count: number }, idx: number) => {
-        element.avg = mathjs.bignumber(mathjs.divide(Number(element.sum), Number(mathjs.bignumber(element.count))));
+    result.forEach((element: ResultAVG, idx: number) => {
+        element.avg = mathjs.bignumber(mathjs.divide(Number(element.sum), Number(element.count)));
     });
     return result;
 }
