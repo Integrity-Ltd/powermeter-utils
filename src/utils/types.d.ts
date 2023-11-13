@@ -43,7 +43,7 @@ export interface RecElement {
     recorded_time: number,
     measured_value: number,
     channel: number,
-    diff?: bignumber,
+    diff?: number,
     from_utc_time?: string,
     to_utc_time?: string,
     from_unix_time?: string,
