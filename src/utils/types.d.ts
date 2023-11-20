@@ -44,6 +44,7 @@ export interface RecElement {
     measured_value: number,
     channel: number,
     diff?: number,
+    multipliedValue?: number,
     from_utc_time?: string,
     to_utc_time?: string,
     from_unix_time?: string,

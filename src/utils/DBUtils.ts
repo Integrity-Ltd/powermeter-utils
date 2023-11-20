@@ -263,7 +263,7 @@ export function getDetails(measurements: Measurement[], powermeterTimeZone: stri
     return result;
 }
 
-interface ResultAVG {
+export interface ResultAVG {
     channel: number,
     sum: number,
     avg: number,
@@ -306,6 +306,13 @@ export function getAvgSum(measurements: Measurement[], powermeterTimeZone: strin
     return result;
 }
 
+interface MeasurementRow {
+    id: number,
+    recorded_time: number,
+    measured_value: number,
+    channel: number
+}
+
 /**
  * Get monthly measurements from previous year
  * 
@@ -315,8 +322,8 @@ export function getAvgSum(measurements: Measurement[], powermeterTimeZone: strin
  * @param channel channel of powermeter (use -1 for all)
  * @returns the array of measurements
  */
-export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel?: number | number[]): Promise<any[]> {
-    let result: any[] = [];
+export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel?: number | number[]): Promise<MeasurementRow[]> {
+    let result: MeasurementRow[] = [];
     const filePath = (process.env.WORKDIR as string);
     const dbFile = path.join(filePath, ip, fromDate.format("YYYY") + "-yearly.sqlite");
     if (fs.existsSync(dbFile)) {
@@ -333,8 +340,8 @@ export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate
                     filters.push(channel);
                 }
             }
-            let measurements = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? (Array.isArray(channel) ? `and channel in (${placeholders})` : "and channel=?") : "") + " order by recorded_time, channel", filters);
-            measurements.forEach((element: any) => {
+            const measurements: MeasurementRow[] = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? (Array.isArray(channel) ? `and channel in (${placeholders})` : "and channel=?") : "") + " order by recorded_time, channel", filters);
+            measurements.forEach((element: MeasurementRow) => {
                 result.push(element);
             })
         } catch (err) {
