@@ -306,13 +306,6 @@ export function getAvgSum(measurements: Measurement[], powermeterTimeZone: strin
     return result;
 }
 
-interface MeasurementRow {
-    id: number,
-    recorded_time: number,
-    measured_value: number,
-    channel: number
-}
-
 /**
  * Get monthly measurements from previous year
  * 
@@ -322,8 +315,8 @@ interface MeasurementRow {
  * @param channel channel of powermeter (use -1 for all)
  * @returns the array of measurements
  */
-export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel?: number | number[]): Promise<MeasurementRow[]> {
-    let result: MeasurementRow[] = [];
+export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate: dayjs.Dayjs, ip: string, channel?: number | number[]): Promise<Measurement[]> {
+    let result: Measurement[] = [];
     const filePath = (process.env.WORKDIR as string);
     const dbFile = path.join(filePath, ip, fromDate.format("YYYY") + "-yearly.sqlite");
     if (fs.existsSync(dbFile)) {
@@ -340,8 +333,8 @@ export async function getYearlyMeasurementsFromDBs(fromDate: dayjs.Dayjs, toDate
                     filters.push(channel);
                 }
             }
-            const measurements: MeasurementRow[] = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? (Array.isArray(channel) ? `and channel in (${placeholders})` : "and channel=?") : "") + " order by recorded_time, channel", filters);
-            measurements.forEach((element: MeasurementRow) => {
+            const measurements: Measurement[] = await runQuery(db, "select * from measurements where recorded_time between ? and ? " + (channel ? (Array.isArray(channel) ? `and channel in (${placeholders})` : "and channel=?") : "") + " order by recorded_time, channel", filters);
+            measurements.forEach((element: Measurement) => {
                 result.push(element);
             })
         } catch (err) {
