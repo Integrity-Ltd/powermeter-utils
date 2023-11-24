@@ -3,12 +3,12 @@
  * @notExported
  */
 export interface PowerMeter {
-    id: number,
-    asset_name: string,
-    ip_address: string,
-    port: number,
-    time_zone: string,
-    enabled: boolean,
+    id: number;
+    asset_name: string;
+    ip_address: string;
+    port: number;
+    time_zone: string;
+    enabled: boolean;
 }
 
 /**
@@ -16,11 +16,11 @@ export interface PowerMeter {
  * @notExported
  */
 export interface Channel {
-    id: number,
-    power_meter_id: number,
-    channel: number,
-    channel_name: string,
-    enabled: boolean,
+    id: number;
+    power_meter_id: number;
+    channel: number;
+    channel_name: string;
+    enabled: boolean;
 }
 
 /**
@@ -29,10 +29,10 @@ export interface Channel {
  */
 
 export interface Measurement {
-    id: number,
-    recorded_time: number,
-    measured_value: number,
-    channel: number,
+    id: number;
+    recorded_time: number;
+    measured_value: number;
+    channel: number;
 }
 
 /**
@@ -40,17 +40,17 @@ export interface Measurement {
  * @notExported
  */
 export interface RecElement {
-    recorded_time: number,
-    measured_value: number,
-    channel: number,
-    diff?: number,
-    multipliedValue?: number,
-    from_utc_time?: string,
-    to_utc_time?: string,
-    from_unix_time?: string,
-    to_unix_time?: string,
-    from_powermeter_time?: string,
-    to_powermeter_time?: string,
-    from_local_time?: string,
-    to_local_time?: string,
+    recorded_time: number;
+    measured_value: number;
+    channel: number;
+    diff?: number;
+    multipliedValue?: number;
+    from_utc_time?: stringnumber;
+    to_utc_time?: stringnumber;
+    from_unix_time?: stringnumber;
+    to_unix_time?: stringnumber;
+    from_powermeter_time?: stringnumber;
+    to_powermeter_time?: stringnumber;
+    from_local_time?: stringnumber;
+    to_local_time?: stringnumber;
 }
